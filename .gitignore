@@ -51,3 +51,9 @@ application.properties
 
 ### Test ###
 test-output/
+
+.idea/
+.gradle/
+build/
+out/
+
