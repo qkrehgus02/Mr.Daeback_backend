@@ -1,4 +1,4 @@
-package com.saeal.MrDaebackService.user.Controller;
+package com.saeal.MrDaebackService.user.controller;
 
 import org.springframework.stereotype.Controller;
 
