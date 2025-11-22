@@ -1,5 +1,6 @@
 package com.saeal.MrDaebackService.dinner.controller;
 
+import com.saeal.MrDaebackService.dinner.dto.request.CreateDinnerMenuItemRequest;
 import com.saeal.MrDaebackService.dinner.dto.request.CreateDinnerRequest;
 import com.saeal.MrDaebackService.dinner.dto.response.DinnerResponseDto;
 import com.saeal.MrDaebackService.dinner.dto.response.DinnerMenuItemResponseDto;
@@ -27,6 +28,21 @@ public class DinnerController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DinnerResponseDto> createDinner(@Valid @RequestBody CreateDinnerRequest request) {
         DinnerResponseDto response = dinnerService.createDinner(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<DinnerResponseDto>> getAllDinners() {
+        List<DinnerResponseDto> response = dinnerService.getAllDinners();
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/menu-items")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<DinnerMenuItemResponseDto> createDinnerMenuItem(
+            @Valid @RequestBody CreateDinnerMenuItemRequest request
+    ) {
+        DinnerMenuItemResponseDto response = dinnerService.createDinnerMenuItem(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
