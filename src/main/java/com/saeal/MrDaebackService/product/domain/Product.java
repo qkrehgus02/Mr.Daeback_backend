@@ -1,8 +1,7 @@
 package com.saeal.MrDaebackService.product.domain;
 
-import com.saeal.MrDaebackService.dinner.Dinner;
+import com.saeal.MrDaebackService.dinner.domain.Dinner;
 import com.saeal.MrDaebackService.servingStyle.domain.ServingStyle;
-import com.saeal.MrDaebackService.product.domain.ProductMenuItem;
 import jakarta.persistence.*;
 import lombok.*;
 

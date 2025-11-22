@@ -1,6 +1,6 @@
 package com.saeal.MrDaebackService.dinner.dto.response;
 
-import com.saeal.MrDaebackService.dinner.Dinner;
+import com.saeal.MrDaebackService.dinner.domain.Dinner;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
