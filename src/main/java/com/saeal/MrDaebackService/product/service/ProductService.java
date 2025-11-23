@@ -8,10 +8,10 @@ import com.saeal.MrDaebackService.product.domain.Product;
 import com.saeal.MrDaebackService.product.domain.ProductMenuItem;
 import com.saeal.MrDaebackService.product.dto.request.CreateProductRequest;
 import com.saeal.MrDaebackService.product.dto.response.ProductResponseDto;
+import com.saeal.MrDaebackService.product.dto.response.ProductMenuItemResponseDto;
 import com.saeal.MrDaebackService.product.repository.ProductRepository;
 import com.saeal.MrDaebackService.servingStyle.domain.ServingStyle;
 import com.saeal.MrDaebackService.servingStyle.repository.ServingStyleRepository;
-import com.saeal.MrDaebackService.dinner.dto.response.DinnerMenuItemResponseDto;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -73,10 +74,13 @@ public class ProductService {
         return ProductResponseDto.from(savedProduct);
     }
 
-    public List<DinnerMenuItemResponseDto> getDinnerMenuItems(UUID dinnerId) {
-        return getDinnerMenuItemsEntities(dinnerId).stream()
-                .map(DinnerMenuItemResponseDto::from)
-                .toList();
+    @Transactional
+    public List<ProductMenuItemResponseDto> getProductMenuItems(UUID productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+        return product.getProductMenuItems().stream()
+                .map(ProductMenuItemResponseDto::from)
+                .collect(Collectors.toList());
     }
 
     private List<DinnerMenuItem> getDinnerMenuItemsEntities(UUID dinnerId) {
