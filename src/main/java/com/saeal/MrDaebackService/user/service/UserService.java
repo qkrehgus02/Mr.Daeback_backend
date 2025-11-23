@@ -8,6 +8,9 @@ import com.saeal.MrDaebackService.user.enums.LoyaltyLevel;
 import com.saeal.MrDaebackService.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.saeal.MrDaebackService.security.JwtUserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -60,5 +63,17 @@ public class UserService {
         user.setUpdatedAt(LocalDateTime.now());
 
         return UserResponseDto.from(user);
+    }
+
+    public UUID getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new IllegalStateException("No authenticated user found");
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof JwtUserDetails jwtUserDetails) {
+            return jwtUserDetails.getId();
+        }
+        throw new IllegalStateException("Unsupported principal type: " + principal.getClass().getName());
     }
 }
