@@ -7,6 +7,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -51,8 +53,15 @@ public class User {
     @Column(nullable = false, length = 20)
     private String phoneNumber;
 
-    @Column(nullable = false)
-    private String address;
+    @ElementCollection
+    @CollectionTable(name = "user_addresses", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "address", nullable = false)
+    @Builder.Default
+    private List<String> addresses = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<UserCard> userCards = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
