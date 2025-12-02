@@ -1,6 +1,7 @@
 package com.saeal.MrDaebackService.product.controller;
 
 import com.saeal.MrDaebackService.product.dto.request.CreateProductRequest;
+import com.saeal.MrDaebackService.product.dto.request.AddProductMenuItemRequest;
 import com.saeal.MrDaebackService.product.dto.response.ProductResponseDto;
 import com.saeal.MrDaebackService.product.service.ProductService;
 import com.saeal.MrDaebackService.product.dto.response.ProductMenuItemResponseDto;
@@ -44,5 +45,15 @@ public class ProductController {
     ) {
         List<ProductMenuItemResponseDto> response = productService.getProductMenuItems(productId);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{productId}/menu-items")
+    @Operation(summary = "Product에 MenuItem 추가", description = "특정 Product에 MenuItem을 추가합니다.")
+    public ResponseEntity<ProductMenuItemResponseDto> addMenuItemToProduct(
+            @PathVariable UUID productId,
+            @Valid @RequestBody AddProductMenuItemRequest request
+    ) {
+        ProductMenuItemResponseDto response = productService.addMenuItemToProduct(productId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
