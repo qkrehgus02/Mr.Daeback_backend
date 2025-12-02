@@ -33,7 +33,7 @@ public class MenuItemsController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping
+    @GetMapping("/getAllMenuItems")
     @Operation(summary = "MenuItem 전체 조회", description = "등록된 모든 MenuItem 리스트를 반환합니다.")
     public ResponseEntity<List<MenuItemResponseDto>> getAllMenuItems() {
         List<MenuItemResponseDto> response = menuItemsService.getAllMenuItems();
