@@ -56,6 +56,7 @@ public class ProductService {
                 .totalPrice(totalPrice)
                 .quantity(quantity)
                 .memo(request.getMemo())
+                .address(request.getAddress())
                 .build();
 
         List<DinnerMenuItem> dinnerMenuItems = getDinnerMenuItemsEntities(dinnerId);

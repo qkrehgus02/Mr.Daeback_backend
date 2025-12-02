@@ -22,15 +22,6 @@ public class ServingStyleController {
 
     private final ServingStyleService servingStyleService;
 
-    @PostMapping("/createServingStyle")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ServingStyleResponseDto> createServingStyle(
-            @Valid @RequestBody CreateServingStyleRequest request
-    ) {
-        ServingStyleResponseDto response = servingStyleService.createServingStyle(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-
     @GetMapping("/getAllServingStyles")
     @Operation(summary = "Serving Style 리스트 반환", description = "Serving Style들의 종류를 반환합니다.")
     public ResponseEntity<List<ServingStyleResponseDto>> getAllServingStyles() {

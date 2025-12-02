@@ -22,6 +22,7 @@ public class ProductResponseDto {
     private BigDecimal totalPrice;
     private int quantity;
     private String memo;
+    private String address;
     private List<ProductMenuItemResponseDto> productMenuItems;
 
     public static ProductResponseDto from(Product product) {
@@ -39,6 +40,7 @@ public class ProductResponseDto {
                 product.getTotalPrice(),
                 product.getQuantity(),
                 product.getMemo(),
+                product.getAddress(),
                 items
         );
     }

@@ -44,4 +44,7 @@ public class Product {
 
     @Column(length = 255)
     private String memo;
+
+    @Column(length = 255)
+    private String address;
 }

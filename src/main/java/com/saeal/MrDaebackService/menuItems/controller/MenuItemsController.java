@@ -22,21 +22,19 @@ public class MenuItemsController {
 
     private final MenuItemsService menuItemsService;
 
-    @PostMapping("/createMenuItem")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<MenuItemResponseDto> createMenuItem(
-            @Valid @RequestBody CreateMenuItemRequest request
-    ) {
-        MenuItemResponseDto response = menuItemsService.createMenuItem(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-
     @PatchMapping("/{menuItemId}/stock")
     public ResponseEntity<MenuItemResponseDto> updateMenuItemStock(
             @PathVariable UUID menuItemId,
             @Valid @RequestBody UpdateMenuItemStockRequest request
     ) {
         MenuItemResponseDto response = menuItemsService.updateMenuItemStock(menuItemId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping
+    @Operation(summary = "MenuItem 전체 조회", description = "등록된 모든 MenuItem 리스트를 반환합니다.")
+    public ResponseEntity<List<MenuItemResponseDto>> getAllMenuItems() {
+        List<MenuItemResponseDto> response = menuItemsService.getAllMenuItems();
         return ResponseEntity.ok(response);
     }
 }
