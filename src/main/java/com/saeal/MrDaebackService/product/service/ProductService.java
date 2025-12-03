@@ -8,6 +8,7 @@ import com.saeal.MrDaebackService.product.domain.Product;
 import com.saeal.MrDaebackService.product.domain.ProductMenuItem;
 import com.saeal.MrDaebackService.product.dto.request.AddProductMenuItemRequest;
 import com.saeal.MrDaebackService.product.dto.request.CreateProductRequest;
+import com.saeal.MrDaebackService.product.dto.request.UpdateProductMenuItemRequest;
 import com.saeal.MrDaebackService.product.dto.response.ProductResponseDto;
 import com.saeal.MrDaebackService.product.dto.response.ProductMenuItemResponseDto;
 import com.saeal.MrDaebackService.product.repository.ProductRepository;
@@ -65,12 +66,15 @@ public class ProductService {
 
         List<DinnerMenuItem> dinnerMenuItems = getDinnerMenuItemsEntities(dinnerId);
         for (DinnerMenuItem dinnerMenuItem : dinnerMenuItems) {
+            BigDecimal menuItemUnitPrice = dinnerMenuItem.getMenuItem().getUnitPrice();
+            int defaultQty = dinnerMenuItem.getDefaultQuantity();
+
             ProductMenuItem productMenuItem = ProductMenuItem.builder()
                     .product(product)
                     .menuItem(dinnerMenuItem.getMenuItem())
-                    .quantity(dinnerMenuItem.getDefaultQuantity())
-                    .unitPrice(BigDecimal.ZERO)
-                    .lineTotal(BigDecimal.ZERO)
+                    .quantity(defaultQty)
+                    .unitPrice(menuItemUnitPrice)
+                    .lineTotal(menuItemUnitPrice.multiply(BigDecimal.valueOf(defaultQty)))
                     .build();
             product.getProductMenuItems().add(productMenuItem);
         }
@@ -102,7 +106,10 @@ public class ProductService {
                 .orElseThrow(() -> new IllegalArgumentException("Menu item not found: " + menuItemId));
 
         int quantity = request.getQuantity();
-        BigDecimal unitPrice = request.getUnitPrice() == null ? BigDecimal.ZERO : request.getUnitPrice();
+        BigDecimal unitPrice = request.getUnitPrice();
+        if (unitPrice == null) {
+            unitPrice = menuItem.getUnitPrice() == null ? BigDecimal.ZERO : menuItem.getUnitPrice();
+        }
         BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
 
         ProductMenuItem productMenuItem = ProductMenuItem.builder()
@@ -124,5 +131,40 @@ public class ProductService {
                 .map(ProductMenuItemResponseDto::from)
                 .findFirst()
                 .orElseGet(() -> ProductMenuItemResponseDto.from(productMenuItem));
+    }
+
+    @Transactional
+    public ProductMenuItemResponseDto updateProductMenuItem(UUID productId, UUID menuItemId, UpdateProductMenuItemRequest request) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+
+        ProductMenuItem target = product.getProductMenuItems().stream()
+                .filter(pmi -> pmi.getMenuItem().getId().equals(menuItemId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Menu item not found in product: " + menuItemId));
+
+        int newQuantity = request.getQuantity();
+        BigDecimal unitPrice = request.getUnitPrice() != null ? request.getUnitPrice() : target.getUnitPrice();
+        if (unitPrice == null) {
+            unitPrice = BigDecimal.ZERO;
+        }
+
+        BigDecimal oldLineTotal = target.getLineTotal() == null ? BigDecimal.ZERO : target.getLineTotal();
+        BigDecimal newLineTotal = unitPrice.multiply(BigDecimal.valueOf(newQuantity));
+
+        target.setQuantity(newQuantity);
+        target.setUnitPrice(unitPrice);
+        target.setLineTotal(newLineTotal);
+
+        BigDecimal currentTotal = product.getTotalPrice() == null ? BigDecimal.ZERO : product.getTotalPrice();
+        product.setTotalPrice(currentTotal.subtract(oldLineTotal).add(newLineTotal));
+
+        Product saved = productRepository.save(product);
+
+        return saved.getProductMenuItems().stream()
+                .filter(pmi -> pmi.getMenuItem().getId().equals(menuItemId))
+                .findFirst()
+                .map(ProductMenuItemResponseDto::from)
+                .orElseThrow(() -> new IllegalStateException("Updated menu item not found after save"));
     }
 }
