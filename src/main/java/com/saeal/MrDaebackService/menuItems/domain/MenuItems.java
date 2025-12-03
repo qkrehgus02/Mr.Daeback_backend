@@ -3,6 +3,7 @@ package com.saeal.MrDaebackService.menuItems.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -25,6 +26,9 @@ public class MenuItems {
 
     @Column(nullable = false)
     private Integer stock; // 재고 수량
+
+    @Column(nullable = false, precision = 18, scale = 2)
+    private BigDecimal unitPrice;
 
     @Column(length = 50)
     private String unitType;

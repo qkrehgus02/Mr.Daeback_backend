@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,6 +27,7 @@ public class MenuItemsService {
         MenuItems menuItem = MenuItems.builder()
                 .name(request.getName())
                 .stock(request.getStock())
+                .unitPrice(request.getUnitPrice() == null ? BigDecimal.ZERO : request.getUnitPrice())
                 .unitType(request.getUnitType())
                 .createdAt(now)
                 .updatedAt(now)

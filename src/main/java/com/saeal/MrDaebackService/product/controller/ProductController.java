@@ -1,21 +1,18 @@
 package com.saeal.MrDaebackService.product.controller;
 
 import com.saeal.MrDaebackService.product.dto.request.CreateProductRequest;
+import com.saeal.MrDaebackService.product.dto.request.AddProductMenuItemRequest;
+import com.saeal.MrDaebackService.product.dto.request.UpdateProductMenuItemRequest;
+import com.saeal.MrDaebackService.product.dto.response.ProductMenuItemResponseDto;
 import com.saeal.MrDaebackService.product.dto.response.ProductResponseDto;
 import com.saeal.MrDaebackService.product.service.ProductService;
-import com.saeal.MrDaebackService.product.dto.response.ProductMenuItemResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -43,6 +40,27 @@ public class ProductController {
             @PathVariable UUID productId
     ) {
         List<ProductMenuItemResponseDto> response = productService.getProductMenuItems(productId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{productId}/menu-items")
+    @Operation(summary = "Product에 MenuItem 추가", description = "특정 Product에 MenuItem을 추가합니다.")
+    public ResponseEntity<ProductMenuItemResponseDto> addMenuItemToProduct(
+            @PathVariable UUID productId,
+            @Valid @RequestBody AddProductMenuItemRequest request
+    ) {
+        ProductMenuItemResponseDto response = productService.addMenuItemToProduct(productId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PatchMapping("/{productId}/menu-items/{menuItemId}")
+    @Operation(summary = "Product의 MenuItem 수량/단가 수정", description = "특정 Product에 포함된 MenuItem의 수량을 변경하고 단가도 선택적으로 수정합니다.")
+    public ResponseEntity<ProductMenuItemResponseDto> updateProductMenuItem(
+            @PathVariable UUID productId,
+            @PathVariable UUID menuItemId,
+            @Valid @RequestBody UpdateProductMenuItemRequest request
+    ) {
+        ProductMenuItemResponseDto response = productService.updateProductMenuItem(productId, menuItemId, request);
         return ResponseEntity.ok(response);
     }
 }
