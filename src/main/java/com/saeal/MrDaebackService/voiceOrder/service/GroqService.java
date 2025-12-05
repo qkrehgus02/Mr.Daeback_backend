@@ -56,7 +56,6 @@ public class GroqService {
             );
 
             if (response.getBody() != null) {
-                log.info("[STT] 변환 결과: {}", response.getBody().getText());
                 return response.getBody().getText();
             }
             return "";
@@ -71,10 +70,7 @@ public class GroqService {
      */
     public String chat(String systemPrompt, List<Map<String, String>> conversationHistory, String userMessage) {
         String url = groqConfig.getBaseUrl() + "/chat/completions";
-
-        // API 키 디버깅 (앞 10자만 표시)
         String apiKey = groqConfig.getApiKey();
-        log.info("[LLM] API Key: {}", apiKey != null && apiKey.length() > 10 ? apiKey.substring(0, 10) + "..." : "NULL or SHORT");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -111,9 +107,7 @@ public class GroqService {
             );
 
             if (response.getBody() != null) {
-                String content = response.getBody().getContent();
-                log.info("[LLM] 응답: {}", content);
-                return content;
+                return response.getBody().getContent();
             }
             return "";
         } catch (Exception e) {

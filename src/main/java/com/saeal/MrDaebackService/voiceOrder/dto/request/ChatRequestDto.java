@@ -17,7 +17,7 @@ public class ChatRequestDto {
     private String audioFormat;                  // 오디오 포맷 (webm, wav 등)
     private List<ChatMessageDto> conversationHistory;  // 대화 히스토리
     private List<OrderItemRequestDto> currentOrder;    // 현재 장바구니
-    private String selectedAddress;              // 선택된 배달 주소 (프론트엔드에서 유지)
+    private String selectedAddress;              // 선택된 배달 주소
 
     @Getter
     @Setter
@@ -37,21 +37,26 @@ public class ChatRequestDto {
         private String dinnerName;
         private String servingStyleId;
         private String servingStyleName;
-        private String productId;   // 생성된 Product ID (스타일 선택 후 생성됨)
         private int quantity;
         private int basePrice;      // dinner 기본 가격
         private int unitPrice;
         private int totalPrice;
-        private List<AdditionalMenuItemDto> additionalMenuItems;
+        private String productId;   // ★ Product ID (스타일 선택 후 생성됨)
+        private List<MenuItemRequestDto> menuItems;  // ★ 메뉴 아이템 커스터마이징 정보
     }
 
+    /**
+     * 메뉴 아이템 커스터마이징 요청 DTO
+     */
     @Getter
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AdditionalMenuItemDto {
+    public static class MenuItemRequestDto {
         private String menuItemId;
         private String menuItemName;
-        private int quantity;
+        private int defaultQuantity;   // 기본 수량
+        private int currentQuantity;   // 현재 수량
+        private int unitPrice;         // 단가
     }
 }

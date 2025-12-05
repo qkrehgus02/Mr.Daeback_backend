@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -56,10 +57,16 @@ public class Product {
     @Column(length = 255)
     private String address;
 
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
     @PrePersist
     public void onCreate() {
         if (productType == null) {
             productType = ProductType.DINNER_PRODUCT;
+        }
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
         }
     }
 }

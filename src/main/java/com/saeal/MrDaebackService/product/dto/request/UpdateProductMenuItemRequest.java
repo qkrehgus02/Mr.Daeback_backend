@@ -12,6 +12,6 @@ import lombok.Setter;
 public class UpdateProductMenuItemRequest {
 
     @NotNull
-    @Min(1)
+    @Min(0)  // 0 허용 (메뉴 아이템 제거 가능)
     private Integer quantity;
 }

@@ -5,3 +5,5 @@ public enum ProductType {
     ADDITIONAL_MENU_PRODUCT  // 추가 메뉴 Product (dinner=null, style=null)
 }
 
+
+

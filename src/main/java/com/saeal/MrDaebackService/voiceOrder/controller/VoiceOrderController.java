@@ -27,7 +27,9 @@ public class VoiceOrderController {
             @RequestBody ChatRequestDto request,
             @AuthenticationPrincipal JwtUserDetails userDetails
     ) {
-        log.info("[VoiceOrder] 채팅 요청 - 사용자: {}", userDetails.getUsername());
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
 
         ChatResponseDto response = voiceOrderService.processChat(
                 request,

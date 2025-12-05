@@ -6,7 +6,6 @@ import com.saeal.MrDaebackService.dinner.repository.DinnerMenuItemRepository;
 import com.saeal.MrDaebackService.dinner.repository.DinnerRepository;
 import com.saeal.MrDaebackService.product.domain.Product;
 import com.saeal.MrDaebackService.product.domain.ProductMenuItem;
-import com.saeal.MrDaebackService.product.dto.request.AddProductMenuItemRequest;
 import com.saeal.MrDaebackService.product.dto.request.CreateProductRequest;
 import com.saeal.MrDaebackService.product.dto.request.CreateAdditionalMenuProductRequest;
 import com.saeal.MrDaebackService.product.dto.request.UpdateProductMenuItemRequest;
@@ -25,7 +24,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +35,14 @@ public class ProductService {
     private final DinnerMenuItemRepository dinnerMenuItemRepository;
     private final MenuItemsRepository menuItemsRepository;
 
+    /**
+     * Product 생성 (Dinner + Style 기반)
+     * - GUI: StyleStep에서 호출
+     * - LLM: VoiceOrderService에서 호출
+     *
+     * totalPrice = dinner.basePrice + style.extraPrice (메뉴 아이템 미포함)
+     * 프론트엔드에서 커스터마이징 차이를 계산하여 최종 가격 결정
+     */
     @Transactional
     public ProductResponseDto createProduct(CreateProductRequest request) {
         UUID dinnerId = UUID.fromString(request.getDinnerId());
@@ -47,9 +53,8 @@ public class ProductService {
         ServingStyle servingStyle = servingStyleRepository.findById(servingStyleId)
                 .orElseThrow(() -> new IllegalArgumentException("Serving style not found: " + servingStyleId));
 
-        int quantity = request.getQuantity();
-        BigDecimal unitPrice = dinner.getBasePrice().add(servingStyle.getExtraPrice());
-        BigDecimal totalPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        // totalPrice = dinner.basePrice + style.extraPrice (메뉴 아이템 미포함)
+        BigDecimal totalPrice = dinner.getBasePrice().add(servingStyle.getExtraPrice());
 
         String productName = request.getProductName();
         if (productName == null || productName.isBlank()) {
@@ -61,22 +66,24 @@ public class ProductService {
                 .servingStyle(servingStyle)
                 .productName(productName)
                 .totalPrice(totalPrice)
-                .quantity(quantity)
+                .quantity(request.getQuantity())
                 .memo(request.getMemo())
                 .address(request.getAddress())
                 .build();
 
-        List<DinnerMenuItem> dinnerMenuItems = getDinnerMenuItemsEntities(dinnerId);
+        // 메뉴 아이템 정보 저장 (가격 계산용, totalPrice에 미포함)
+        List<DinnerMenuItem> dinnerMenuItems = dinnerMenuItemRepository.findByDinnerId(dinnerId);
         for (DinnerMenuItem dinnerMenuItem : dinnerMenuItems) {
             BigDecimal menuItemUnitPrice = dinnerMenuItem.getMenuItem().getUnitPrice();
             int defaultQty = dinnerMenuItem.getDefaultQuantity();
+            BigDecimal lineTotal = menuItemUnitPrice.multiply(BigDecimal.valueOf(defaultQty));
 
             ProductMenuItem productMenuItem = ProductMenuItem.builder()
                     .product(product)
                     .menuItem(dinnerMenuItem.getMenuItem())
                     .quantity(defaultQty)
                     .unitPrice(menuItemUnitPrice)
-                    .lineTotal(menuItemUnitPrice.multiply(BigDecimal.valueOf(defaultQty)))
+                    .lineTotal(lineTotal)
                     .build();
             product.getProductMenuItems().add(productMenuItem);
         }
@@ -85,6 +92,10 @@ public class ProductService {
         return ProductResponseDto.from(savedProduct);
     }
 
+    /**
+     * 추가 메뉴 Product 생성
+     * - GUI: CheckoutStep에서 공통 추가 메뉴용
+     */
     @Transactional
     public ProductResponseDto createAdditionalMenuProduct(CreateAdditionalMenuProductRequest request) {
         UUID menuItemId = UUID.fromString(request.getMenuItemId());
@@ -95,13 +106,11 @@ public class ProductService {
         BigDecimal unitPrice = menuItem.getUnitPrice();
         BigDecimal totalPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
 
-        String productName = "추가 메뉴: " + menuItem.getName();
-
         Product product = Product.builder()
                 .productType(ProductType.ADDITIONAL_MENU_PRODUCT)
                 .dinner(null)
                 .servingStyle(null)
-                .productName(productName)
+                .productName("추가 메뉴: " + menuItem.getName())
                 .totalPrice(totalPrice)
                 .quantity(quantity)
                 .memo(request.getMemo())
@@ -121,54 +130,13 @@ public class ProductService {
         return ProductResponseDto.from(savedProduct);
     }
 
-    @Transactional
-    public List<ProductMenuItemResponseDto> getProductMenuItems(UUID productId) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
-        return product.getProductMenuItems().stream()
-                .map(ProductMenuItemResponseDto::from)
-                .collect(Collectors.toList());
-    }
-
-    private List<DinnerMenuItem> getDinnerMenuItemsEntities(UUID dinnerId) {
-        return dinnerMenuItemRepository.findByDinnerId(dinnerId);
-    }
-
-    @Transactional
-    public ProductMenuItemResponseDto addMenuItemToProduct(UUID productId, AddProductMenuItemRequest request) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
-
-        UUID menuItemId = UUID.fromString(request.getMenuItemId());
-        MenuItems menuItem = menuItemsRepository.findById(menuItemId)
-                .orElseThrow(() -> new IllegalArgumentException("Menu item not found: " + menuItemId));
-
-        int quantity = request.getQuantity();
-        // Always align product_menu_item unit price with the source menu item price to keep consistency.
-        BigDecimal unitPrice = menuItem.getUnitPrice() == null ? BigDecimal.ZERO : menuItem.getUnitPrice();
-        BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
-
-        ProductMenuItem productMenuItem = ProductMenuItem.builder()
-                .product(product)
-                .menuItem(menuItem)
-                .quantity(quantity)
-                .unitPrice(unitPrice)
-                .lineTotal(lineTotal)
-                .build();
-
-        product.getProductMenuItems().add(productMenuItem);
-        BigDecimal currentTotal = product.getTotalPrice() == null ? BigDecimal.ZERO : product.getTotalPrice();
-        product.setTotalPrice(currentTotal.add(lineTotal));
-
-        Product saved = productRepository.save(product);
-        // find the newly added item by menu item id and quantity for response
-        return saved.getProductMenuItems().stream()
-                .filter(pmi -> pmi.getMenuItem().getId().equals(menuItem.getId()) && pmi.getQuantity() == quantity)
-                .map(ProductMenuItemResponseDto::from)
-                .findFirst()
-                .orElseGet(() -> ProductMenuItemResponseDto.from(productMenuItem));
-    }
-
+    /**
+     * MenuItem 수량 수정
+     * - GUI: CheckoutStep에서 커스터마이징 반영 시 호출
+     * - LLM: VoiceOrderService CUSTOMIZE_MENU에서 호출
+     *
+     * Product.totalPrice는 업데이트하지 않음 (프론트엔드 계산 신뢰)
+     */
     @Transactional
     public ProductMenuItemResponseDto updateProductMenuItem(UUID productId, UUID menuItemId, UpdateProductMenuItemRequest request) {
         Product product = productRepository.findById(productId)
@@ -188,14 +156,10 @@ public class ProductService {
             throw new IllegalStateException("Unit price is missing for menu item " + menuItemId);
         }
 
-        BigDecimal oldLineTotal = target.getLineTotal() == null ? BigDecimal.ZERO : target.getLineTotal();
-        BigDecimal newLineTotal = unitPrice.multiply(BigDecimal.valueOf(newQuantity));
-
         target.setQuantity(newQuantity);
-        target.setLineTotal(newLineTotal);
+        target.setLineTotal(unitPrice.multiply(BigDecimal.valueOf(newQuantity)));
 
-        BigDecimal currentTotal = product.getTotalPrice() == null ? BigDecimal.ZERO : product.getTotalPrice();
-        product.setTotalPrice(currentTotal.subtract(oldLineTotal).add(newLineTotal));
+        // Product.totalPrice는 업데이트하지 않음 (프론트엔드 계산 신뢰)
 
         Product saved = productRepository.save(product);
 
@@ -206,34 +170,10 @@ public class ProductService {
                 .orElseThrow(() -> new IllegalStateException("Updated menu item not found after save"));
     }
 
-    @Transactional
-    public void removeProductMenuItem(UUID productId, UUID menuItemId) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
-
-        ProductMenuItem target = product.getProductMenuItems().stream()
-                .filter(pmi -> pmi.getMenuItem().getId().equals(menuItemId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Menu item not found in product: " + menuItemId));
-
-        BigDecimal lineTotal = target.getLineTotal() == null ? BigDecimal.ZERO : target.getLineTotal();
-        BigDecimal currentTotal = product.getTotalPrice() == null ? BigDecimal.ZERO : product.getTotalPrice();
-        BigDecimal newTotal = currentTotal.subtract(lineTotal);
-        product.setTotalPrice(newTotal.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : newTotal);
-
-        product.getProductMenuItems().remove(target); // orphanRemoval=true handles delete
-        productRepository.save(product);
-    }
-
-    @Transactional
-    public void deleteProduct(UUID productId) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
-        
-        // ProductMenuItem은 orphanRemoval=true로 자동 삭제됨
-        productRepository.delete(product);
-    }
-
+    /**
+     * Product 메모 수정
+     * - GUI: CheckoutStep에서 특별 요청사항 저장 시 호출
+     */
     @Transactional
     public void updateProductMemo(UUID productId, String memo) {
         Product product = productRepository.findById(productId)

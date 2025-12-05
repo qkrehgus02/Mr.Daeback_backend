@@ -33,7 +33,12 @@ public class OrderService {
             if (quantity == null) {
                 throw new IllegalStateException("Quantity not found for product: " + product.getId());
             }
-            BigDecimal lineTotal = product.getTotalPrice().multiply(BigDecimal.valueOf(quantity));
+            // ★ Cart에 저장된 unitPrice 사용 (프론트엔드에서 계산한 가격)
+            BigDecimal unitPrice = cart.getProductUnitPrices().get(product.getId());
+            if (unitPrice == null) {
+                unitPrice = product.getTotalPrice(); // fallback
+            }
+            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
             subtotal = subtotal.add(lineTotal);
         }
 
@@ -67,7 +72,11 @@ public class OrderService {
 
         for (Product product : cart.getProducts()) {
             Integer quantity = cart.getProductQuantities().get(product.getId());
-            BigDecimal unitPrice = product.getTotalPrice();
+            // ★ Cart에 저장된 unitPrice 사용 (프론트엔드에서 계산한 가격)
+            BigDecimal unitPrice = cart.getProductUnitPrices().get(product.getId());
+            if (unitPrice == null) {
+                unitPrice = product.getTotalPrice(); // fallback
+            }
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
 
             OrderItem orderItem = OrderItem.builder()

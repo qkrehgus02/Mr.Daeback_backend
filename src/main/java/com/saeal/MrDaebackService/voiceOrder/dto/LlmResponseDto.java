@@ -34,17 +34,13 @@ public class LlmResponseDto {
         private String styleName;       // 스타일 이름 (예: "Simple Style", "배달")
         private Integer quantity;       // 수량
         private Integer addressIndex;   // 주소 인덱스 (1, 2, 3...)
-        private String newAddress;      // 새로 등록할 주소
-        private List<AdditionalMenuItemEntity> additionalMenuItems; // 추가 메뉴 아이템 목록
-    }
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class AdditionalMenuItemEntity {
-        private String menuItemName;    // 메뉴 아이템 이름 (예: "김치", "콜라")
-        private Integer quantity;       // 수량
+        // ★ 커스터마이징용 필드
+        private String menuItemName;    // 메뉴 아이템 이름 (예: "스테이크", "와인")
+        private String action;          // 액션 (add, remove, increase, decrease)
+        private Integer menuItemQuantity; // 메뉴 아이템 수량 변경량
+
+        // ★ 특별 요청사항
+        private String specialRequest;  // 특별 요청 (예: "젓가락 빼주세요")
     }
 }

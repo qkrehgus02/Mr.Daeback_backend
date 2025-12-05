@@ -39,5 +39,8 @@ public class CreateCartRequest {
         @NotNull
         @Min(1)
         private Integer quantity;
+
+        // ★ 프론트엔드에서 계산한 단가 (옵션, 없으면 Product.totalPrice 사용)
+        private java.math.BigDecimal unitPrice;
     }
 }

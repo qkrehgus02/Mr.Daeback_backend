@@ -1,94 +1,93 @@
 package com.saeal.MrDaebackService.voiceOrder.service;
 
 import com.saeal.MrDaebackService.dinner.dto.response.DinnerResponseDto;
+import com.saeal.MrDaebackService.product.domain.Product;
+import com.saeal.MrDaebackService.product.dto.response.ProductResponseDto;
+import com.saeal.MrDaebackService.product.repository.ProductRepository;
 import com.saeal.MrDaebackService.servingStyle.dto.response.ServingStyleResponseDto;
-import com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto;
+import com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto.OrderItemRequestDto;
+import com.saeal.MrDaebackService.voiceOrder.dto.response.ChatResponseDto.AdditionalMenuItemDto;
 import com.saeal.MrDaebackService.voiceOrder.dto.response.OrderItemDto;
+import com.saeal.MrDaebackService.voiceOrder.dto.response.OrderItemDto.MenuItemCustomization;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 임시 장바구니 관리
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class CartManager {
+
+    private final MenuMatcher menuMatcher;
+    private final ProductRepository productRepository;
 
     /**
      * 기존 장바구니를 OrderItemDto 리스트로 변환
+     * ★ menuItems가 비어있고 productId가 있으면 DB에서 다시 로드
      */
-    public List<OrderItemDto> convertToOrderItemDtoList(List<ChatRequestDto.OrderItemRequestDto> currentOrder) {
+    public List<OrderItemDto> convertToOrderItemDtoList(List<OrderItemRequestDto> currentOrder) {
         List<OrderItemDto> result = new ArrayList<>();
         if (currentOrder == null) return result;
 
-        for (ChatRequestDto.OrderItemRequestDto item : currentOrder) {
-            // 추가 메뉴 아이템 변환
-            List<OrderItemDto.AdditionalMenuItemDto> additionalMenuItems = new ArrayList<>();
-            if (item.getAdditionalMenuItems() != null) {
-                for (var additionalItem : item.getAdditionalMenuItems()) {
-                    additionalMenuItems.add(OrderItemDto.AdditionalMenuItemDto.builder()
-                            .menuItemId(additionalItem.getMenuItemId())
-                            .menuItemName(additionalItem.getMenuItemName())
-                            .quantity(additionalItem.getQuantity())
+        for (OrderItemRequestDto item : currentOrder) {
+            List<MenuItemCustomization> menuItems = new ArrayList<>();
+
+            // 1. 프론트에서 보낸 menuItems가 있으면 사용
+            if (item.getMenuItems() != null && !item.getMenuItems().isEmpty()) {
+                for (var mi : item.getMenuItems()) {
+                    menuItems.add(MenuItemCustomization.builder()
+                            .menuItemId(mi.getMenuItemId())
+                            .menuItemName(mi.getMenuItemName())
+                            .defaultQuantity(mi.getDefaultQuantity())
+                            .currentQuantity(mi.getCurrentQuantity())
+                            .unitPrice(mi.getUnitPrice())
                             .build());
                 }
             }
+            // 2. ★ menuItems가 비어있고 productId가 있으면 DB에서 로드
+            else if (item.getProductId() != null && !item.getProductId().isEmpty()) {
+                try {
+                    Product product = productRepository.findById(UUID.fromString(item.getProductId()))
+                            .orElse(null);
+                    if (product != null && product.getProductMenuItems() != null) {
+                        for (var pmi : product.getProductMenuItems()) {
+                            if (pmi.getMenuItem() != null) {
+                                menuItems.add(MenuItemCustomization.builder()
+                                        .menuItemId(pmi.getMenuItem().getId().toString())
+                                        .menuItemName(pmi.getMenuItem().getName())
+                                        .defaultQuantity(pmi.getQuantity())
+                                        .currentQuantity(pmi.getQuantity())
+                                        .unitPrice(pmi.getUnitPrice() != null ? pmi.getUnitPrice().intValue() : 0)
+                                        .build());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // 메뉴 아이템 로드 실패 시 빈 리스트로 진행
+                }
+            }
 
-            result.add(OrderItemDto.builder()
+            OrderItemDto dto = OrderItemDto.builder()
                     .dinnerId(item.getDinnerId())
                     .dinnerName(item.getDinnerName())
                     .servingStyleId(item.getServingStyleId())
                     .servingStyleName(item.getServingStyleName())
-                    .productId(item.getProductId())  // productId 포함
                     .quantity(item.getQuantity())
                     .basePrice(item.getBasePrice())
                     .unitPrice(item.getUnitPrice())
                     .totalPrice(item.getTotalPrice())
-                    .additionalMenuItems(additionalMenuItems)
-                    .build());
-        }
-        return result;
-    }
+                    .productId(item.getProductId())
+                    .menuItems(menuItems)
+                    .build();
 
-    /**
-     * OrderItemDto 리스트를 OrderItemRequestDto 리스트로 변환
-     */
-    public List<com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto.OrderItemRequestDto> convertToOrderItemRequestDtoList(List<OrderItemDto> orderItems) {
-        List<com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto.OrderItemRequestDto> result = new ArrayList<>();
-        if (orderItems == null) return result;
-
-        for (OrderItemDto item : orderItems) {
-            // 추가 메뉴 아이템 변환
-            List<com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto.AdditionalMenuItemDto> additionalMenuItems = new ArrayList<>();
-            if (item.getAdditionalMenuItems() != null) {
-                for (var additionalItem : item.getAdditionalMenuItems()) {
-                    com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto.AdditionalMenuItemDto dto = 
-                            new com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto.AdditionalMenuItemDto(
-                            additionalItem.getMenuItemId(),
-                            additionalItem.getMenuItemName(),
-                            additionalItem.getQuantity()
-                    );
-                    additionalMenuItems.add(dto);
-                }
-            }
-
-            com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto.OrderItemRequestDto orderItemDto = 
-                    new com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto.OrderItemRequestDto(
-                    item.getDinnerId(),
-                    item.getDinnerName(),
-                    item.getServingStyleId(),
-                    item.getServingStyleName(),
-                    item.getProductId(),
-                    item.getQuantity(),
-                    item.getBasePrice(),
-                    item.getUnitPrice(),
-                    item.getTotalPrice(),
-                    additionalMenuItems
-            );
-            result.add(orderItemDto);
+            result.add(dto);
         }
         return result;
     }
@@ -105,6 +104,7 @@ public class CartManager {
                 .basePrice(basePrice)
                 .unitPrice(basePrice)
                 .totalPrice(basePrice * quantity)
+                .menuItems(new ArrayList<>())
                 .build();
     }
 
@@ -116,11 +116,11 @@ public class CartManager {
         return OrderItemDto.builder()
                 .dinnerId(dinner.getId().toString())
                 .dinnerName(dinner.getDinnerName())
-                .productId(null)  // 아직 Product 생성 안 됨
-                .quantity(0)  // 아직 확정되지 않음
+                .quantity(0)
                 .basePrice(basePrice)
                 .unitPrice(basePrice)
                 .totalPrice(0)
+                .menuItems(new ArrayList<>())
                 .build();
     }
 
@@ -133,14 +133,12 @@ public class CartManager {
                 .dinnerName(item.getDinnerName())
                 .servingStyleId(item.getServingStyleId())
                 .servingStyleName(item.getServingStyleName())
-                .productId(item.getProductId())  // productId 유지
                 .quantity(quantity)
                 .basePrice(item.getBasePrice())
                 .unitPrice(item.getUnitPrice())
                 .totalPrice(item.getUnitPrice() * quantity)
-                .additionalMenuItems(item.getAdditionalMenuItems() != null 
-                    ? new ArrayList<>(item.getAdditionalMenuItems()) 
-                    : new ArrayList<>())
+                .productId(item.getProductId())
+                .menuItems(item.getMenuItems() != null ? new ArrayList<>(item.getMenuItems()) : new ArrayList<>())
                 .build();
     }
 
@@ -155,20 +153,17 @@ public class CartManager {
                 .dinnerName(item.getDinnerName())
                 .servingStyleId(style.getId().toString())
                 .servingStyleName(style.getStyleName())
-                .productId(item.getProductId())  // 기존 productId 유지
                 .quantity(item.getQuantity())
                 .basePrice(item.getBasePrice())
                 .unitPrice(newUnitPrice)
                 .totalPrice(newUnitPrice * item.getQuantity())
-                .additionalMenuItems(item.getAdditionalMenuItems() != null 
-                    ? new ArrayList<>(item.getAdditionalMenuItems()) 
-                    : new ArrayList<>())
+                .productId(item.getProductId())
+                .menuItems(item.getMenuItems() != null ? new ArrayList<>(item.getMenuItems()) : new ArrayList<>())
                 .build();
     }
 
     /**
      * 스타일 변경 (기존 스타일 → 새 스타일)
-     * basePrice + 새 스타일 가격으로 계산
      */
     public OrderItemDto changeStyle(OrderItemDto item, ServingStyleResponseDto newStyle) {
         int newUnitPrice = item.getBasePrice() + newStyle.getExtraPrice().intValue();
@@ -182,14 +177,99 @@ public class CartManager {
                 .basePrice(item.getBasePrice())
                 .unitPrice(newUnitPrice)
                 .totalPrice(newUnitPrice * item.getQuantity())
-                .additionalMenuItems(item.getAdditionalMenuItems() != null 
-                    ? new ArrayList<>(item.getAdditionalMenuItems()) 
-                    : new ArrayList<>())
+                .productId(item.getProductId())
+                .menuItems(item.getMenuItems() != null ? new ArrayList<>(item.getMenuItems()) : new ArrayList<>())
                 .build();
     }
 
     /**
-     * 총 가격 계산
+     * ★ Product 정보 설정 (스타일 선택 후 Product 생성 시)
+     */
+    public OrderItemDto setProductInfo(OrderItemDto item, ProductResponseDto product) {
+        List<MenuItemCustomization> menuItems = new ArrayList<>();
+
+        // Product의 메뉴 아이템을 커스터마이징 목록으로 변환
+        if (product.getProductMenuItems() != null) {
+            for (var pmi : product.getProductMenuItems()) {
+                menuItems.add(MenuItemCustomization.builder()
+                        .menuItemId(pmi.getMenuItemId())
+                        .menuItemName(pmi.getMenuItemName())
+                        .defaultQuantity(pmi.getQuantity())
+                        .currentQuantity(pmi.getQuantity())
+                        .unitPrice(pmi.getUnitPrice() != null ? pmi.getUnitPrice().intValue() : 0)
+                        .build());
+            }
+        }
+
+        return OrderItemDto.builder()
+                .dinnerId(item.getDinnerId())
+                .dinnerName(item.getDinnerName())
+                .servingStyleId(item.getServingStyleId())
+                .servingStyleName(item.getServingStyleName())
+                .quantity(item.getQuantity())
+                .basePrice(item.getBasePrice())
+                .unitPrice(item.getUnitPrice())
+                .totalPrice(product.getTotalPrice() != null ? product.getTotalPrice().intValue() : item.getTotalPrice())
+                .productId(product.getId())
+                .menuItems(menuItems)
+                .build();
+    }
+
+    /**
+     * ★ 메뉴 아이템 수량 변경
+     */
+    public OrderItemDto updateMenuItemQuantity(OrderItemDto item, String menuItemId, int newQuantity) {
+        List<MenuItemCustomization> updatedMenuItems = new ArrayList<>();
+
+        for (MenuItemCustomization mi : item.getMenuItems()) {
+            if (mi.getMenuItemId().equals(menuItemId)) {
+                updatedMenuItems.add(MenuItemCustomization.builder()
+                        .menuItemId(mi.getMenuItemId())
+                        .menuItemName(mi.getMenuItemName())
+                        .defaultQuantity(mi.getDefaultQuantity())
+                        .currentQuantity(Math.max(0, newQuantity))
+                        .unitPrice(mi.getUnitPrice())
+                        .build());
+            } else {
+                updatedMenuItems.add(mi);
+            }
+        }
+
+        // 가격 재계산
+        int menuItemPriceDiff = updatedMenuItems.stream()
+                .mapToInt(MenuItemCustomization::getPriceDiff)
+                .sum();
+        int newTotalPrice = (item.getUnitPrice() + menuItemPriceDiff) * item.getQuantity();
+
+        return OrderItemDto.builder()
+                .dinnerId(item.getDinnerId())
+                .dinnerName(item.getDinnerName())
+                .servingStyleId(item.getServingStyleId())
+                .servingStyleName(item.getServingStyleName())
+                .quantity(item.getQuantity())
+                .basePrice(item.getBasePrice())
+                .unitPrice(item.getUnitPrice())
+                .totalPrice(newTotalPrice)
+                .productId(item.getProductId())
+                .menuItems(updatedMenuItems)
+                .build();
+    }
+
+    /**
+     * ★ 메뉴 아이템 이름으로 찾기 (한글/영문 양방향 매칭)
+     */
+    public MenuItemCustomization findMenuItemByName(OrderItemDto item, String menuItemName) {
+        if (item.getMenuItems() == null || menuItemName == null) return null;
+
+        // MenuMatcher의 한글-영문 매핑을 사용해서 검색
+        return item.getMenuItems().stream()
+                .filter(mi -> menuMatcher.isMatchingMenuItem(mi.getMenuItemName(), menuItemName))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * 총 가격 계산 (디너 + 메뉴 아이템 커스터마이징)
      */
     public int calculateTotalPrice(List<OrderItemDto> orderItems) {
         return orderItems.stream()
@@ -198,66 +278,19 @@ public class CartManager {
     }
 
     /**
-     * 아이템에 추가 메뉴 아이템 추가
+     * 추가 메뉴 총 가격 계산
      */
-    public OrderItemDto addAdditionalMenuItem(OrderItemDto item, OrderItemDto.AdditionalMenuItemDto additionalMenuItem) {
-        List<OrderItemDto.AdditionalMenuItemDto> additionalMenuItems = new ArrayList<>(
-                item.getAdditionalMenuItems() != null ? item.getAdditionalMenuItems() : new ArrayList<>()
-        );
-        
-        // 이미 있는 메뉴 아이템인지 확인
-        boolean found = false;
-        for (int i = 0; i < additionalMenuItems.size(); i++) {
-            if (additionalMenuItems.get(i).getMenuItemId().equals(additionalMenuItem.getMenuItemId())) {
-                // 기존 수량에 추가
-                int newQuantity = additionalMenuItems.get(i).getQuantity() + additionalMenuItem.getQuantity();
-                additionalMenuItems.set(i, OrderItemDto.AdditionalMenuItemDto.builder()
-                        .menuItemId(additionalMenuItem.getMenuItemId())
-                        .menuItemName(additionalMenuItem.getMenuItemName())
-                        .quantity(newQuantity)
-                        .build());
-                found = true;
-                break;
-            }
-        }
-        
-        if (!found) {
-            additionalMenuItems.add(additionalMenuItem);
-        }
-
-        return OrderItemDto.builder()
-                .dinnerId(item.getDinnerId())
-                .dinnerName(item.getDinnerName())
-                .servingStyleId(item.getServingStyleId())
-                .servingStyleName(item.getServingStyleName())
-                .quantity(item.getQuantity())
-                .basePrice(item.getBasePrice())
-                .unitPrice(item.getUnitPrice())
-                .totalPrice(item.getTotalPrice())
-                .additionalMenuItems(additionalMenuItems)
-                .build();
+    public int calculateAdditionalMenuTotalPrice(List<AdditionalMenuItemDto> additionalMenuItems) {
+        if (additionalMenuItems == null) return 0;
+        return additionalMenuItems.stream()
+                .mapToInt(AdditionalMenuItemDto::getTotalPrice)
+                .sum();
     }
 
     /**
-     * 아이템에서 추가 메뉴 아이템 제거
+     * 전체 총 가격 계산 (디너 + 추가 메뉴)
      */
-    public OrderItemDto removeAdditionalMenuItem(OrderItemDto item, String menuItemId) {
-        List<OrderItemDto.AdditionalMenuItemDto> additionalMenuItems = new ArrayList<>(
-                item.getAdditionalMenuItems() != null ? item.getAdditionalMenuItems() : new ArrayList<>()
-        );
-        
-        additionalMenuItems.removeIf(ami -> ami.getMenuItemId().equals(menuItemId));
-
-        return OrderItemDto.builder()
-                .dinnerId(item.getDinnerId())
-                .dinnerName(item.getDinnerName())
-                .servingStyleId(item.getServingStyleId())
-                .servingStyleName(item.getServingStyleName())
-                .quantity(item.getQuantity())
-                .basePrice(item.getBasePrice())
-                .unitPrice(item.getUnitPrice())
-                .totalPrice(item.getTotalPrice())
-                .additionalMenuItems(additionalMenuItems)
-                .build();
+    public int calculateGrandTotalPrice(List<OrderItemDto> orderItems, List<AdditionalMenuItemDto> additionalMenuItems) {
+        return calculateTotalPrice(orderItems) + calculateAdditionalMenuTotalPrice(additionalMenuItems);
     }
 }
