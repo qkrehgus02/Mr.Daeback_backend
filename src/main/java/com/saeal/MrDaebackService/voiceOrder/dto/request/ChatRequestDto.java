@@ -41,22 +41,5 @@ public class ChatRequestDto {
         private int basePrice;      // dinner 기본 가격
         private int unitPrice;
         private int totalPrice;
-        private String productId;   // ★ Product ID (스타일 선택 후 생성됨)
-        private List<MenuItemRequestDto> menuItems;  // ★ 메뉴 아이템 커스터마이징 정보
-    }
-
-    /**
-     * 메뉴 아이템 커스터마이징 요청 DTO
-     */
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MenuItemRequestDto {
-        private String menuItemId;
-        private String menuItemName;
-        private int defaultQuantity;   // 기본 수량
-        private int currentQuantity;   // 현재 수량
-        private int unitPrice;         // 단가
     }
 }
