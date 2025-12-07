@@ -9,7 +9,10 @@ import com.saeal.MrDaebackService.order.enums.OrderStatus;
 import com.saeal.MrDaebackService.order.enums.PaymentStatus;
 import com.saeal.MrDaebackService.order.dto.response.OrderResponseDto;
 import com.saeal.MrDaebackService.order.repository.OrderRepository;
+import com.saeal.MrDaebackService.menuItems.domain.MenuItems;
+import com.saeal.MrDaebackService.menuItems.repository.MenuItemsRepository;
 import com.saeal.MrDaebackService.product.domain.Product;
+import com.saeal.MrDaebackService.product.domain.ProductMenuItem;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,9 +27,13 @@ import java.util.UUID;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final MenuItemsRepository menuItemsRepository;
 
     @Transactional
     public Order createOrderFromCart(Cart cart) {
+        // 재고 확인 및 차감
+        updateMenuItemStocks(cart);
+
         BigDecimal subtotal = BigDecimal.ZERO;
         for (Product product : cart.getProducts()) {
             Integer quantity = cart.getProductQuantities().get(product.getId());
@@ -195,5 +202,35 @@ public class OrderService {
 
     private String generateOrderNumber() {
         return "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    /**
+     * Cart 내 Product의 메뉴 아이템 수량만큼 MenuItems 재고를 차감한다.
+     * 재고가 부족하면 IllegalStateException을 던져 결제를 중단한다.
+     */
+    private void updateMenuItemStocks(Cart cart) {
+        for (Product product : cart.getProducts()) {
+            Integer productQuantity = cart.getProductQuantities().get(product.getId());
+            if (productQuantity == null) {
+                throw new IllegalStateException("Quantity not found for product: " + product.getId());
+            }
+
+            for (ProductMenuItem productMenuItem : product.getProductMenuItems()) {
+                MenuItems menuItem = productMenuItem.getMenuItem();
+                if (menuItem == null) {
+                    throw new IllegalStateException("Menu item not linked to product: " + product.getId());
+                }
+
+                int required = productMenuItem.getQuantity() * productQuantity;
+                Integer currentStock = menuItem.getStock();
+                if (currentStock == null || currentStock < required) {
+                    throw new IllegalStateException("Insufficient stock for menu item: " + menuItem.getName());
+                }
+
+                menuItem.setStock(currentStock - required);
+                // 명시적으로 저장해 재고 차감 반영
+                menuItemsRepository.save(menuItem);
+            }
+        }
     }
 }
