@@ -43,6 +43,9 @@ logs/
 .DS_Store
 Thumbs.db
 
+### Keys / Certificates ###
+*.pem
+
 ### Spring Boot Config ###
 application.yml
 application.yaml
@@ -56,4 +59,3 @@ test-output/
 .gradle/
 build/
 out/
-
