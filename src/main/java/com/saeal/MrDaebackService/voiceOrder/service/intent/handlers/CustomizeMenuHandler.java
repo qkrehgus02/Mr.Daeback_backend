@@ -27,11 +27,34 @@ import java.util.regex.Pattern;
 @Slf4j
 public class CustomizeMenuHandler extends AbstractIntentHandler {
 
-    // 구성요소 수량 패턴: "커피 1포트", "샴페인 2병", "스테이크 2개"
+    // 구성요소 수량 패턴: "커피 1포트", "샴페인 2병", "스테이크 2개", "커피 일포트"
     private static final Pattern COMPONENT_QTY_PATTERN = Pattern.compile(
-            "(스테이크|샐러드|수프|빵|와인|샴페인|커피|디저트|케이크|아이스크림|바게트빵|바게트|파스타|라이스|에그|스크램블)\\s*(\\d+)\\s*(개|병|잔|조각|포트)?",
+            "(스테이크|샐러드|수프|빵|와인|샴페인|커피|디저트|케이크|아이스크림|바게트빵|바게트|파스타|라이스|에그|스크램블)\\s*(\\d+|일|이|삼|사|오|육|칠|팔|구|십|한|두|세|네|다섯)\\s*(개|병|잔|조각|포트)?",
             Pattern.CASE_INSENSITIVE
     );
+
+    // 한글 숫자 -> 아라비아 숫자 변환
+    private static int parseKoreanNumber(String numStr) {
+        if (numStr == null) return 1;
+        // 아라비아 숫자인 경우
+        if (numStr.matches("\\d+")) {
+            return Integer.parseInt(numStr);
+        }
+        // 한글 숫자 변환
+        return switch (numStr) {
+            case "일", "한" -> 1;
+            case "이", "두" -> 2;
+            case "삼", "세" -> 3;
+            case "사", "네" -> 4;
+            case "오", "다섯" -> 5;
+            case "육" -> 6;
+            case "칠" -> 7;
+            case "팔" -> 8;
+            case "구" -> 9;
+            case "십" -> 10;
+            default -> 1;
+        };
+    }
 
     public CustomizeMenuHandler(MenuMatcher menuMatcher, CartManager cartManager) {
         super(menuMatcher, cartManager);
@@ -208,7 +231,7 @@ public class CustomizeMenuHandler extends AbstractIntentHandler {
         Matcher matcher = COMPONENT_QTY_PATTERN.matcher(message);
         while (matcher.find()) {
             String itemName = matcher.group(1);
-            int quantity = Integer.parseInt(matcher.group(2));
+            int quantity = parseKoreanNumber(matcher.group(2));
             String unit = matcher.group(3) != null ? matcher.group(3) : "개";
             changes.add(new ComponentChange(itemName, quantity, unit));
             log.debug("[CustomizeMenuHandler] Found component: {} {} {}", itemName, quantity, unit);
