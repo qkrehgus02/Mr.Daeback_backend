@@ -1,6 +1,5 @@
 package com.saeal.MrDaebackService.voiceOrder.service.intent.handlers;
 
-import com.saeal.MrDaebackService.voiceOrder.dto.LlmResponseDto;
 import com.saeal.MrDaebackService.voiceOrder.dto.response.OrderItemDto;
 import com.saeal.MrDaebackService.voiceOrder.enums.OrderFlowState;
 import com.saeal.MrDaebackService.voiceOrder.enums.UiAction;
@@ -15,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,6 +31,26 @@ public class CustomizeMenuHandler extends AbstractIntentHandler {
     private static final Pattern COMPONENT_QTY_PATTERN = Pattern.compile(
             "(스테이크|샐러드|수프|빵|와인|샴페인|커피|디저트|케이크|아이스크림|바게트빵|바게트|파스타|라이스|에그|스크램블)\\s*(\\d+|일|이|삼|사|오|육|칠|팔|구|십|한|두|세|네|다섯)\\s*(개|병|잔|조각|포트)?",
             Pattern.CASE_INSENSITIVE
+    );
+
+    // 아이템별 기본 단위 매핑
+    private static final Map<String, String> DEFAULT_UNITS = Map.ofEntries(
+            Map.entry("커피", "포트"),
+            Map.entry("샴페인", "병"),
+            Map.entry("와인", "병"),
+            Map.entry("스테이크", "개"),
+            Map.entry("샐러드", "개"),
+            Map.entry("수프", "개"),
+            Map.entry("빵", "개"),
+            Map.entry("바게트빵", "개"),
+            Map.entry("바게트", "개"),
+            Map.entry("디저트", "개"),
+            Map.entry("케이크", "조각"),
+            Map.entry("아이스크림", "개"),
+            Map.entry("파스타", "개"),
+            Map.entry("라이스", "개"),
+            Map.entry("에그", "개"),
+            Map.entry("스크램블", "개")
     );
 
     // 한글 숫자 -> 아라비아 숫자 변환
@@ -232,7 +252,8 @@ public class CustomizeMenuHandler extends AbstractIntentHandler {
         while (matcher.find()) {
             String itemName = matcher.group(1);
             int quantity = parseKoreanNumber(matcher.group(2));
-            String unit = matcher.group(3) != null ? matcher.group(3) : "개";
+            // 단위가 명시되지 않으면 아이템별 기본 단위 사용
+            String unit = matcher.group(3) != null ? matcher.group(3) : DEFAULT_UNITS.getOrDefault(itemName, "개");
             changes.add(new ComponentChange(itemName, quantity, unit));
             log.debug("[CustomizeMenuHandler] Found component: {} {} {}", itemName, quantity, unit);
         }

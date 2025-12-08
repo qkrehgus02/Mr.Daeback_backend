@@ -151,6 +151,32 @@ public class OrderItemDto {
         return sb.toString();
     }
 
+    // 아이템별 기본 단위 매핑
+    private static final Map<String, String> DEFAULT_UNITS = Map.ofEntries(
+            Map.entry("커피", "포트"),
+            Map.entry("coffee", "포트"),
+            Map.entry("샴페인", "병"),
+            Map.entry("champagne", "병"),
+            Map.entry("와인", "병"),
+            Map.entry("wine", "병"),
+            Map.entry("케이크", "조각"),
+            Map.entry("cake", "조각")
+    );
+
+    /**
+     * 아이템 이름에 맞는 단위 가져오기
+     */
+    private String getUnitForItem(String itemName) {
+        if (itemName == null) return "개";
+        String lowerName = itemName.toLowerCase();
+        for (Map.Entry<String, String> entry : DEFAULT_UNITS.entrySet()) {
+            if (lowerName.contains(entry.getKey().toLowerCase())) {
+                return entry.getValue();
+            }
+        }
+        return "개";
+    }
+
     /**
      * 구성요소 표시 문자열 (제외된 것 제외)
      */
@@ -173,7 +199,8 @@ public class OrderItemDto {
             if (!first) {
                 sb.append(", ");
             }
-            sb.append(itemName).append(" : ").append(entry.getValue()).append("개");
+            String unit = getUnitForItem(itemName);
+            sb.append(itemName).append(" : ").append(entry.getValue()).append(unit);
             first = false;
         }
 
